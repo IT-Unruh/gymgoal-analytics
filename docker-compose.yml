@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/gymgoal.db
+      - AUTH_ENABLED=false
+      - DEFAULT_USER_EMAIL=local@local
+      - SECRET_KEY=change-me-in-prod
+      - UPLOAD_DIR=./data/uploads
+      - CORS_ORIGINS=http://localhost:8000
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
