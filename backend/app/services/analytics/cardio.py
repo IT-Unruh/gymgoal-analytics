@@ -6,12 +6,44 @@ from datetime import date
 
 import pandas as pd
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.exercise import Exercise
 from app.models.set import Set
 from app.models.workout_session import WorkoutSession
+from app.services.muscle_mapper import map_exercise
+
+# Keywords used to identify cardio exercises by name (mirrors muscle_mapper Cardio rule)
+_CARDIO_KEYWORDS = [
+    "lauf", "run", "jog", "jogg", "walking", "spazier",
+    "bike", "fahrrad", "rudermaschine", "treppen",
+    "cardio", "ergometer", "treadmill",
+]
+
+
+async def _reclassify_cardio_exercises(db: AsyncSession) -> None:
+    """Re-apply muscle_mapper to any unoverridden exercise that should be Cardio but isn't."""
+    result = await db.execute(
+        select(Exercise).where(
+            Exercise.is_user_overridden.is_(False),
+            Exercise.category != "cardio",
+        )
+    )
+    to_update = []
+    for ex in result.scalars().all():
+        mapping = map_exercise(ex.name)
+        if mapping.category == "cardio":
+            to_update.append(ex.id)
+
+    if to_update:
+        await db.execute(
+            update(Exercise)
+            .where(Exercise.id.in_(to_update))
+            .values(primary_muscle_group="Cardio", category="cardio", equipment="cardio_machine")
+        )
+        await db.commit()
 
 
 class CardioSession(BaseModel):
@@ -43,11 +75,27 @@ async def get_cardio(
     max_hr: int | None = None,
     age: int | None = None,
 ) -> CardioStats:
+    # Fix any exercises that were imported before the keyword list was updated
+    await _reclassify_cardio_exercises(db)
+
+    # Keyword conditions on exercise name (catches exercises regardless of DB classification)
+    name_conditions = [
+        func.lower(Exercise.name).contains(kw) for kw in _CARDIO_KEYWORDS
+    ]
+
     q = (
         select(Set)
         .join(WorkoutSession, Set.session_id == WorkoutSession.id)
+        .join(Exercise, Set.exercise_id == Exercise.id)
         .where(Set.user_id == user_id)
-        .where(Set.time_total_seconds.isnot(None))
+        .where(
+            or_(
+                Exercise.category == "cardio",
+                Set.time_total_seconds.isnot(None),
+                Set.distance_meters.isnot(None),
+                *name_conditions,
+            )
+        )
         .options(selectinload(Set.exercise), selectinload(Set.session))
     )
     if date_from:
@@ -72,7 +120,7 @@ async def get_cardio(
     rows = []
     for s in sets:
         duration_min = (s.time_total_seconds or 0) / 60
-        dist_km = (s.distance_meters or 0) / 1000 if s.distance_meters else None
+        dist_km = s.distance_meters / 1000 if s.distance_meters else None
         pace = None
         if dist_km and dist_km > 0 and duration_min > 0:
             pace = duration_min / dist_km

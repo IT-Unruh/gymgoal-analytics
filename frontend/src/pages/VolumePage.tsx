@@ -3,6 +3,7 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { useVolume } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { ChartSkeleton } from '../components/ChartSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { KpiCard } from '../components/KpiCard';
@@ -11,7 +12,8 @@ import { MUSCLE_LABELS, STATUS_COLORS } from '../lib/colors';
 import { formatVolume } from '../lib/format';
 
 export function VolumePage() {
-  const { data, isLoading } = useVolume();
+  const { from, to } = useDateRange();
+  const { data, isLoading } = useVolume(from || undefined, to || undefined);
 
   if (isLoading) return <div className="p-6 space-y-4"><ChartSkeleton /><ChartSkeleton height={300} /></div>;
   if (!data || data.total_sets === 0) {
@@ -54,13 +56,15 @@ export function VolumePage() {
           <p className="text-xs text-gray-500 mb-4">
             Grün = 10–22 Sätze/Woche (Hypertrophie-Bereich nach Schoenfeld)
           </p>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={mgData} layout="vertical">
+          <ResponsiveContainer width="100%" height={450}>
+            <BarChart data={mgData} layout="vertical" barSize={18}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 10, fill: '#6b7280' }} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#9ca3af' }} width={85} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#9ca3af' }} width={130} />
               <Tooltip
-                contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: 12 }}
+                contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: 12, color: '#f9fafb' }}
+                itemStyle={{ color: '#f9fafb' }}
+                labelStyle={{ color: '#9ca3af' }}
                 formatter={(v) => [`${(v as number).toFixed(1)} Sätze/W`, '']}
               />
               {/* Reference lines for 10 and 22 */}

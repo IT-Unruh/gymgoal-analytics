@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { usePeriodization } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { ChartSkeleton } from '../components/ChartSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
@@ -14,7 +15,8 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export function PeriodizationPage() {
-  const { data, isLoading } = usePeriodization();
+  const { from, to } = useDateRange();
+  const { data, isLoading } = usePeriodization(from || undefined, to || undefined);
 
   if (isLoading) return <div className="p-6 space-y-4"><ChartSkeleton /><ChartSkeleton /></div>;
   if (!data?.week_blocks.length) return <><PageHeader title="Periodisierung" /><EmptyState message="Noch keine Daten" /></>;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceDot } from 'recharts';
 import { usePRs, useSettings } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { ChartSkeleton } from '../components/ChartSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
@@ -11,7 +12,8 @@ export function PRsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { data: settings } = useSettings();
   const formula = settings?.preferred_1rm_formula ?? 'epley';
-  const { data: prs, isLoading } = usePRs();
+  const { from, to } = useDateRange();
+  const { data: prs, isLoading } = usePRs(undefined, from || undefined, to || undefined);
 
   if (isLoading) return <div className="p-6"><ChartSkeleton /></div>;
   if (!prs?.length) {

@@ -38,7 +38,7 @@ KEYWORD_RULES: list[tuple[list[str], str, str]] = [
     # Funktionell
     (["kettlebell", "swing", "farmer", "carry", "turkish", "get-up"], "Funktionell", "functional"),
     # Cardio — "rudermaschine" normalized matches "rudermaschine" (no umlauts)
-    (["lauf", "run", "bike", "fahrrad", "rudermaschine", "treppen", "cardio", "ergometer", "treadmill"], "Cardio", "cardio"),
+    (["lauf", "run", "jog", "jogg", "walking", "spazier", "bike", "fahrrad", "rudermaschine", "treppen", "cardio", "ergometer", "treadmill"], "Cardio", "cardio"),
 ]
 
 

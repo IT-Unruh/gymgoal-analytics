@@ -64,8 +64,10 @@ def _normalize_weight_to_kg(weight: float, unit: str) -> float:
 def _normalize_distance_to_meters(distance: float, exercise_name: str, unit: str) -> float | None:
     if math.isnan(distance):
         return None
-    # Rudermaschine bug: distance is already in meters but unit field says "km"
-    if "rudermaschine" in exercise_name.lower() and distance > 5000:
+    if distance == 0:
+        return None
+    # Rudermaschine exports distance in meters despite "km" unit label
+    if "rudermaschine" in exercise_name.lower():
         return distance
     if str(unit).strip().lower() == "km":
         return distance * 1000
@@ -114,8 +116,11 @@ async def import_tab_file(
         if col in df.columns:
             df[col] = df.groupby(["Date", "Session", "Exercise ID"])[col].ffill()
 
-    # Skip rows where Set, Weight, and Reps are all NaN (defensive — truly empty rows)
-    mask = df["Set"].isna() & df["Weight"].isna() & df["Reps"].isna()
+    # Skip rows where Set, Weight, Reps AND Time Total AND Distance are all empty.
+    # Cardio rows legitimately have no Set/Weight/Reps but do have Time Total or Distance.
+    has_time = df["Time Total"].notna() if "Time Total" in df.columns else False
+    has_dist = df["Distance"].notna() if "Distance" in df.columns else False
+    mask = df["Set"].isna() & df["Weight"].isna() & df["Reps"].isna() & ~has_time & ~has_dist
     df = df[~mask].reset_index(drop=True)
     # Reps == 0 is kept in DB (cardio sets have no reps); analytics filters them where needed
 

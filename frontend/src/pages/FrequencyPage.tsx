@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 
 import { useFrequency } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { ChartSkeleton } from '../components/ChartSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { KpiCard } from '../components/KpiCard';
@@ -43,7 +44,8 @@ function WeekTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
 }
 
 export function FrequencyPage() {
-  const { data, isLoading } = useFrequency();
+  const { from, to } = useDateRange();
+  const { data, isLoading } = useFrequency(from || undefined, to || undefined);
 
   if (isLoading) return <div className="p-6 space-y-4"><ChartSkeleton /><ChartSkeleton /></div>;
   if (!data || data.total_sessions === 0) {

@@ -4,6 +4,7 @@ import {
   ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { useProgression } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { ChartSkeleton } from '../components/ChartSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
@@ -189,7 +190,8 @@ function ExerciseDetail({ ex }: { ex: ExerciseTrend }) {
 }
 
 export function ProgressionPage() {
-  const { data, isLoading } = useProgression();
+  const { from, to } = useDateRange();
+  const { data, isLoading } = useProgression(from || undefined, to || undefined);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   if (isLoading) return <div className="p-6 space-y-4"><ChartSkeleton /><ChartSkeleton /></div>;

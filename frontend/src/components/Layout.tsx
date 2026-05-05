@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useDateRange } from '../contexts/DateRangeContext';
 
 const NAV = [
   { to: '/', label: 'Übersicht', icon: '▦' },
@@ -14,6 +15,48 @@ const NAV = [
   { to: '/exercises', label: 'Übungen', icon: '✎' },
   { to: '/settings', label: 'Einstellungen', icon: '⚙' },
 ];
+
+const today = new Date().toISOString().split('T')[0];
+
+function DateRangeBar() {
+  const { from, to, setFrom, setTo, clear } = useDateRange();
+  const isActive = !!from || !!to;
+
+  return (
+    <div className="flex items-center gap-3 px-6 py-2 border-b border-gray-800 bg-gray-950 shrink-0">
+      <span className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Zeitraum</span>
+      <input
+        type="date"
+        value={from}
+        max={to || today}
+        onChange={(e) => setFrom(e.target.value)}
+        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+      />
+      <span className="text-xs text-gray-600">–</span>
+      <input
+        type="date"
+        value={to}
+        min={from || undefined}
+        max={today}
+        onChange={(e) => setTo(e.target.value)}
+        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 [color-scheme:dark]"
+      />
+      {isActive && (
+        <>
+          <span className="text-[11px] text-blue-400 bg-blue-950 border border-blue-800 px-2 py-0.5 rounded-full">
+            Gefiltert
+          </span>
+          <button
+            onClick={clear}
+            className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            × Zurücksetzen
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -48,8 +91,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-gray-600">v0.1.0</p>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
-        {children}
+      <main className="flex-1 overflow-hidden flex flex-col">
+        <DateRangeBar />
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

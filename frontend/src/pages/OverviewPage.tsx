@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { useFrequency, useVolume, usePredictive, useProgression, useSettings } from '../api/hooks';
+import { useDateRange } from '../contexts/DateRangeContext';
 import { CardSkeleton, ChartSkeleton } from '../components/ChartSkeleton';
 import { KpiCard } from '../components/KpiCard';
 import { PageHeader } from '../components/PageHeader';
@@ -10,10 +11,13 @@ import { formatDate, formatKg, formatPct, formatVolume } from '../lib/format';
 import type { CalendarDay } from '../types';
 
 export function OverviewPage() {
-  const { data: freq, isLoading: freqLoading } = useFrequency();
-  const { data: vol } = useVolume();
-  const { data: prog, isLoading: progLoading } = useProgression();
-  const { data: pred } = usePredictive();
+  const { from, to } = useDateRange();
+  const f = from || undefined;
+  const t = to || undefined;
+  const { data: freq, isLoading: freqLoading } = useFrequency(f, t);
+  const { data: vol } = useVolume(f, t);
+  const { data: prog, isLoading: progLoading } = useProgression(f, t);
+  const { data: pred } = usePredictive(f, t);
   useSettings();
 
   const hasData = freq && freq.total_sessions > 0;
@@ -264,101 +268,61 @@ function MonthCalendar({ heatmap }: { heatmap: CalendarDay[] }) {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-300">Trainingskalender</h3>
         <span className="text-xs text-gray-500">{trainingDaysThisMonth} Trainingstage</span>
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={prevMonth}
-          className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors text-base leading-none"
-          aria-label="Vorheriger Monat"
-        >
-          ←
-        </button>
-        <span className="text-sm font-medium text-gray-200 capitalize">{monthName}</span>
-        <button
-          onClick={nextMonth}
-          disabled={!canGoNext}
-          className="p-1.5 rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
-          aria-label="Nächster Monat"
-        >
-          →
-        </button>
-      </div>
+      {/* w-72 keeps cells at a fixed small size regardless of page width */}
+      <div className="w-72">
+        {/* Month navigation */}
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={prevMonth} className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors text-sm">←</button>
+          <span className="text-xs font-medium text-gray-200 capitalize">{monthName}</span>
+          <button onClick={nextMonth} disabled={!canGoNext} className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm">→</button>
+        </div>
 
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {DOW.map((d) => (
-          <div key={d} className="text-center text-[11px] text-gray-500 font-medium py-1">{d}</div>
-        ))}
-      </div>
+        {/* DOW headers + day cells share the same 7-col grid */}
+        <div className="grid grid-cols-7 gap-0.5">
+          {DOW.map((d) => (
+            <div key={d} className="w-8 h-5 flex items-center justify-center text-[10px] text-gray-600 font-medium">{d}</div>
+          ))}
+          {Array.from({ length: startOffset }).map((_, i) => <div key={`pad-${i}`} className="w-8 h-8" />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const entry = byDate.get(ds);
+            const sessions = entry?.session_count ?? 0;
+            const sets = entry?.total_sets ?? 0;
+            const isToday = ds === todayStr;
+            const isFuture = ds > todayStr;
+            const hasTraining = sessions > 0;
+            return (
+              <div
+                key={ds}
+                title={isFuture ? '' : hasTraining ? `${sessions} Session${sessions > 1 ? 's' : ''}, ${sets} Sätze` : 'Ruhetag'}
+                className={[
+                  'w-8 h-8 flex flex-col items-center justify-center rounded text-[11px] select-none',
+                  isToday ? 'ring-1 ring-blue-400 ring-offset-1 ring-offset-gray-900' : '',
+                  isFuture ? 'text-gray-700'
+                    : hasTraining
+                      ? sessions === 1 ? 'bg-blue-700 text-white font-semibold' : 'bg-blue-500 text-white font-bold'
+                      : 'bg-gray-800 text-gray-500',
+                ].join(' ')}
+              >
+                <span>{day}</span>
+                {hasTraining && sessions > 1 && <span className="text-[8px] opacity-80 leading-none">×{sessions}</span>}
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-1">
-        {/* Empty offset cells */}
-        {Array.from({ length: startOffset }).map((_, i) => (
-          <div key={`pad-${i}`} />
-        ))}
-
-        {/* Day cells */}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const entry = byDate.get(ds);
-          const sessions = entry?.session_count ?? 0;
-          const sets = entry?.total_sets ?? 0;
-          const isToday = ds === todayStr;
-          const isFuture = ds > todayStr;
-          const hasTraining = sessions > 0;
-
-          return (
-            <div
-              key={ds}
-              title={
-                isFuture ? '' :
-                hasTraining
-                  ? `${sessions} Session${sessions > 1 ? 's' : ''}, ${sets} Sätze`
-                  : 'Ruhetag'
-              }
-              className={`
-                aspect-square flex flex-col items-center justify-center rounded-md text-xs select-none
-                ${isToday ? 'ring-2 ring-blue-400 ring-offset-1 ring-offset-gray-900' : ''}
-                ${isFuture
-                  ? 'text-gray-700'
-                  : hasTraining
-                    ? sessions === 1
-                      ? 'bg-blue-700 text-white font-semibold'
-                      : 'bg-blue-500 text-white font-bold'
-                    : 'bg-gray-800 text-gray-500'
-                }
-              `}
-            >
-              <span>{day}</span>
-              {hasTraining && sessions > 1 && (
-                <span className="text-[9px] opacity-80 leading-none">×{sessions}</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-5 mt-4 text-xs text-gray-500">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm inline-block bg-blue-700" /> Training
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm inline-block bg-blue-500" /> 2+ Sessions
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm inline-block bg-gray-800" /> Ruhetag
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm inline-block border-2 border-blue-400 bg-transparent" /> Heute
-        </span>
+        {/* Legend */}
+        <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-500">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm inline-block bg-blue-700" /> Training</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm inline-block bg-blue-500" /> 2+</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm inline-block bg-gray-800" /> Ruhetag</span>
+        </div>
       </div>
     </div>
   );

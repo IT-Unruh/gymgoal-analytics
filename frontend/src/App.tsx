@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { DateRangeProvider } from './contexts/DateRangeContext';
 import { Layout } from './components/Layout';
 import { CardioPage } from './pages/CardioPage';
 import { ComparePage } from './pages/ComparePage';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <DateRangeProvider>
         <Layout>
           <Routes>
             <Route path="/" element={<OverviewPage />} />
@@ -38,6 +40,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </Layout>
+        </DateRangeProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
