@@ -123,6 +123,16 @@ export interface ExercisePRs {
   pr_timeline: PREntry[];
 }
 
+export interface SessionDataPoint {
+  date: string;
+  e1rm: number;
+  max_weight_kg: number;
+  avg_weight_kg: number;
+  sets: number;
+  total_reps: number;
+  volume_kg: number;
+}
+
 export interface ExerciseTrend {
   exercise_id: number;
   exercise_name: string;
@@ -131,7 +141,11 @@ export interface ExerciseTrend {
   p_value: number;
   trend: 'increasing' | 'flat' | 'decreasing';
   is_plateau: boolean;
-  data_points: { date: string; e1rm: number }[];
+  total_sets: number;
+  avg_sets_per_week: number;
+  max_weight_kg: number;
+  sets_per_week: { week: string; sets: number }[];
+  data_points: SessionDataPoint[];
 }
 
 export interface WeekBlock {

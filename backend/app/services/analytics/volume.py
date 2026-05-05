@@ -36,6 +36,7 @@ class VolumeStats(BaseModel):
     total_volume_kg: float
     total_sets: int
     volume_per_week: list[dict]
+    sets_per_week: list[dict]
     volume_per_month: list[dict]
     muscle_group_volumes: list[MuscleGroupVolume]
     volume_by_category: dict[str, float]
@@ -70,6 +71,7 @@ async def get_volume_stats(
             total_volume_kg=0,
             total_sets=0,
             volume_per_week=[],
+            sets_per_week=[],
             volume_per_month=[],
             muscle_group_volumes=empty_muscle,
             volume_by_category={},
@@ -99,9 +101,11 @@ async def get_volume_stats(
     total_sets = len(df)
 
     vpw = df.groupby("week")["volume"].sum().reset_index()
+    spw = df.groupby("week").size().reset_index(name="sets")
     vpm = df.groupby("month")["volume"].sum().reset_index()
 
     volume_per_week = [{"week": str(r["week"]), "volume_kg": round(float(r["volume"]), 2)} for _, r in vpw.iterrows()]
+    sets_per_week = [{"week": str(r["week"]), "sets": int(r["sets"])} for _, r in spw.iterrows()]
     volume_per_month = [{"month": str(r["month"]), "volume_kg": round(float(r["volume"]), 2)} for _, r in vpm.iterrows()]
 
     # Weeks in range for weekly average calculation
@@ -140,6 +144,7 @@ async def get_volume_stats(
         total_volume_kg=round(total_volume, 2),
         total_sets=total_sets,
         volume_per_week=volume_per_week,
+        sets_per_week=sets_per_week,
         volume_per_month=volume_per_month,
         muscle_group_volumes=mg_list,
         volume_by_category=by_category,
