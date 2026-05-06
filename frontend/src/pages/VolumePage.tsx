@@ -11,6 +11,31 @@ import { PageHeader } from '../components/PageHeader';
 import { MUSCLE_LABELS, STATUS_COLORS } from '../lib/colors';
 import { formatVolume } from '../lib/format';
 
+function parsePeriod(period: string) {
+  const [startStr, endStr] = period.split('/');
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date((endStr ?? startStr) + 'T00:00:00');
+  const tmp = new Date(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const kw = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const fmt = (d: Date) => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  return { kw, startLabel: fmt(start), endLabel: fmt(end) };
+}
+
+function WeekTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value?: number; payload: { week: string } }> }) {
+  if (!active || !payload?.length) return null;
+  const { kw, startLabel, endLabel } = parsePeriod(payload[0].payload.week);
+  const vol = payload[0].value ?? 0;
+  return (
+    <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-lg">
+      <p className="font-semibold text-gray-200 mb-0.5">KW {kw}</p>
+      <p className="text-gray-400">{startLabel} – {endLabel}</p>
+      <p className="text-blue-400 font-medium mt-1">{formatVolume(vol)}</p>
+    </div>
+  );
+}
+
 export function VolumePage() {
   const { from, to } = useDateRange();
   const { data, isLoading } = useVolume(from || undefined, to || undefined);
@@ -86,12 +111,9 @@ export function VolumePage() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#6b7280' }} tickFormatter={(v) => v.split('/')[1] ?? v} />
+                <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#6b7280' }} tickFormatter={(v) => `KW ${parsePeriod(v).kw}`} />
                 <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}t`} />
-                <Tooltip
-                  contentStyle={{ background: '#111827', border: '1px solid #374151', fontSize: 12 }}
-                  formatter={(v) => [formatVolume(v as number), 'Volumen']}
-                />
+                <Tooltip content={<WeekTooltip />} />
                 <Bar dataKey="volume_kg" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Volumen" />
               </BarChart>
             </ResponsiveContainer>

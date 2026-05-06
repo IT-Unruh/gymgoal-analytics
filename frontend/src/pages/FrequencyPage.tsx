@@ -11,33 +11,26 @@ import { KpiCard } from '../components/KpiCard';
 import { PageHeader } from '../components/PageHeader';
 import { formatNumber, formatPct } from '../lib/format';
 
-/** Returns Monday and Sunday of an ISO week given "YYYY/WW". */
-function isoWeekBounds(yearWeek: string): { monday: Date; sunday: Date } {
-  const [y, w] = yearWeek.split('/').map(Number);
-  // Jan 4 is always in ISO week 1
-  const jan4 = new Date(y, 0, 4);
-  const jan4Dow = (jan4.getDay() + 6) % 7; // Mon=0 … Sun=6
-  const monday = new Date(jan4);
-  monday.setDate(jan4.getDate() - jan4Dow + (w - 1) * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { monday, sunday };
-}
-
-function fmtShort(d: Date) {
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+function parsePeriod(period: string) {
+  const [startStr, endStr] = period.split('/');
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date((endStr ?? startStr) + 'T00:00:00');
+  const tmp = new Date(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const kw = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const fmt = (d: Date) => d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  return { kw, startLabel: fmt(start), endLabel: fmt(end) };
 }
 
 function WeekTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { week: string }; value?: number }> }) {
   if (!active || !payload?.length) return null;
-  const week: string = payload[0].payload.week;
-  const count: number = payload[0].value ?? 0;
-  const kw = week.split('/')[1];
-  const { monday, sunday } = isoWeekBounds(week);
+  const { kw, startLabel, endLabel } = parsePeriod(payload[0].payload.week);
+  const count = payload[0].value ?? 0;
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-lg">
       <p className="font-semibold text-gray-200 mb-0.5">KW {kw}</p>
-      <p className="text-gray-400">{fmtShort(monday)} – {fmtShort(sunday)}</p>
+      <p className="text-gray-400">{startLabel} – {endLabel}</p>
       <p className="text-blue-400 font-medium mt-1">{count} {count === 1 ? 'Session' : 'Sessions'}</p>
     </div>
   );
@@ -74,7 +67,7 @@ export function FrequencyPage() {
                 <XAxis
                   dataKey="week"
                   tick={{ fontSize: 10, fill: '#6b7280' }}
-                  tickFormatter={(v: string) => `KW ${v.split('/')[1] ?? v}`}
+                  tickFormatter={(v: string) => `KW ${parsePeriod(v).kw}`}
                   interval="preserveStartEnd"
                 />
                 <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} allowDecimals={false} width={24} />
